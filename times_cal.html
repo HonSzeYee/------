@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>15 个计时器</title>
+  <style>
+    :root{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color-scheme: light dark;
+      --bg: #f6f7fb;
+      --text: #111;
+      --muted: #666;
+      --header-bg: #fff;
+      --border: #e9e9ef;
+      --card-bg: #fff;
+      --card-border: #ececf2;
+      --shadow: 0 2px 10px rgba(0,0,0,.04);
+      --badge-bg: #eef2ff;
+      --badge-text: #334155;
+      --badge-border: #e0e7ff;
+      --btn-border: #e5e7eb;
+      --btn-bg: #fff;
+      --btn-hover: #f7f7fb;
+      --pause-border: #f6c453;
+      --resume-border: #86efac;
+      --reset-border: #fca5a5;
+      --pause-fill: #fde7b3;
+      --resume-fill: #d9fbe5;
+      --reset-fill: #ffd6d6;
+      --btn-text: #1f2937;
+      --toggle-bg: #eef1f7;
+      --toggle-active-bg: #ffffff;
+      --toggle-shadow: 0 2px 6px rgba(0,0,0,.12);
+      --toggle-active-text: #111;
+      --toggle-icon-muted: #7b8794;
+    }
+    [data-theme="dark"]{
+      --bg: #000;
+      --text: #f5f7fb;
+      --muted: #b4bcc8;
+      --header-bg: #000;
+      --border: #242a35;
+      --card-bg: #000;
+      --card-border: #242a35;
+      --shadow: 0 10px 24px rgba(0,0,0,.35);
+      --badge-bg: #1b2335;
+      --badge-text: #e6ecff;
+      --badge-border: #2a3552;
+      --btn-border: #2a3240;
+      --btn-bg: #000;
+      --btn-hover: #1a2230;
+      --pause-border: #7a621f;
+      --resume-border: #2b6d4a;
+      --reset-border: #7a3a3a;
+      --pause-fill: #4a3b14;
+      --resume-fill: #1f3a2b;
+      --reset-fill: #3b1f1f;
+      --btn-text: #f5f7fb;
+      --toggle-bg: #111;
+      --toggle-active-bg: #1a1a1a;
+      --toggle-shadow: 0 2px 8px rgba(0,0,0,.6);
+      --toggle-active-text: #f5f7fb;
+      --toggle-icon-muted: #5d6775;
+    }
+    body { margin: 0; background:var(--bg); color:var(--text); }
+    header{
+      padding: 18px 16px;
+      background: var(--header-bg);
+      position: sticky; top: 0;
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+    }
+    header h1{ margin:0; font-size:18px; text-align:center; }
+    header p{ margin:6px 0 0; color:#555; font-size:13px; }
+    .header-row{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position: relative;
+    }
+    .theme-tabs{
+      position:absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 1px solid var(--border);
+      background: var(--toggle-bg);
+      border-radius: 999px;
+      padding: 3px;
+      display:flex;
+      gap: 2px;
+    }
+    .theme-tab{
+      border: 0;
+      background: transparent;
+      color: var(--toggle-icon-muted);
+      border-radius: 999px;
+      padding: 6px 10px;
+      display:flex;
+      align-items:center;
+      gap: 6px;
+      font-size: 12px;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      cursor: pointer;
+      transition: background .15s ease, color .15s ease;
+    }
+    .theme-tab .icon{
+      width: 14px;
+      height: 14px;
+    }
+    .theme-tab.active{
+      background: var(--toggle-active-bg);
+      color: var(--toggle-active-text);
+      box-shadow: var(--toggle-shadow);
+    }
+    .sr-only{
+      position:absolute;
+      width:1px;
+      height:1px;
+      padding:0;
+      margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      white-space:nowrap;
+      border:0;
+    }
+
+    .wrap { padding: 16px; max-width: 1200px; margin: 0 auto; }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(190px, 1fr));
+      gap: 32px;
+    }
+    @media (width: 1112px) and (height: 834px){
+      .grid{ grid-template-columns: repeat(5, minmax(170px, 1fr)); }
+      .wrap{ max-width: 1080px; }
+    }
+    @media (max-width: 900px){ .grid{ grid-template-columns: repeat(2, minmax(170px, 1fr)); } }
+    @media (max-width: 520px){ .grid{ grid-template-columns: 1fr; } }
+
+    .card{
+      background:var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      aspect-ratio: 4 / 3;
+      min-height: 140px;
+    }
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 8px;
+    }
+    .badge{
+      font-size: 32px;
+      padding: 0 0 0 4px;
+      border-radius: 0;
+      background: transparent;
+      color:var(--text);
+      border: 0;
+      white-space:nowrap;
+    }
+    .status{
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 24px;
+      color:var(--text);
+      white-space:nowrap;
+      text-align:center;
+    }
+    .time{
+      font-variant-numeric: tabular-nums;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-align:center;
+      padding: 8px 0;
+    }
+    .btns{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 88%;
+      align-self: center;
+      margin-top: 24px;
+    }
+    button{
+      border: 1px solid var(--btn-border);
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      padding: 9px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      transition: transform .02s ease, background .2s ease;
+      user-select:none;
+    }
+    .btns button:active{ transform: translateY(1px); }
+    button:hover{ background:var(--btn-hover); }
+    button:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+    }
+    .btn-pause { border-color:var(--pause-border); background:var(--pause-fill); }
+    .btn-resume{ border-color:var(--resume-border); background:var(--resume-fill); }
+    .btn-reset { border-color:var(--reset-border); background:var(--reset-fill); }
+
+    .hint { color:#666; font-size: 12px; margin-top: 10px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-row">
+      <h1> Joy Move 拼豆计时器 </h1>
+      <div class="theme-tabs" role="tablist" aria-label="主题切换">
+        <button id="themeLight" class="theme-tab" type="button" role="tab" aria-selected="true">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="12" y1="2" x2="12" y2="5"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="2" y1="12" x2="5" y2="12"/>
+              <line x1="19" y1="12" x2="22" y2="12"/>
+              <line x1="4.6" y1="4.6" x2="6.7" y2="6.7"/>
+              <line x1="17.3" y1="17.3" x2="19.4" y2="19.4"/>
+              <line x1="4.6" y1="19.4" x2="6.7" y2="17.3"/>
+              <line x1="17.3" y1="6.7" x2="19.4" y2="4.6"/>
+            </g>
+          </svg>
+          浅色
+        </button>
+        <button id="themeDark" class="theme-tab" type="button" role="tab" aria-selected="false">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3a9 9 0 1 0 11.5 11.5z"/>
+          </svg>
+          深色
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <script>
+    // ===== 工具：格式化毫秒 -> HH:MM:SS =====
+    function format(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    // ===== 单个计时器状态结构 =====
+    function createTimerState() {
+      return {
+        elapsedMs: 0,      // 已累积时间
+        running: false,    // 是否在跑
+        lastTick: performance.now()
+      };
+    }
+
+    // ===== 渲染 15 个卡片 =====
+    const grid = document.getElementById("grid");
+    const themeLight = document.getElementById("themeLight");
+    const themeDark = document.getElementById("themeDark");
+    const root = document.documentElement;
+
+    function setTheme(theme) {
+      if (theme === "dark") {
+        root.setAttribute("data-theme", "dark");
+        themeDark.classList.add("active");
+        themeLight.classList.remove("active");
+        themeDark.setAttribute("aria-selected", "true");
+        themeLight.setAttribute("aria-selected", "false");
+      } else {
+        root.removeAttribute("data-theme");
+        themeLight.classList.add("active");
+        themeDark.classList.remove("active");
+        themeLight.setAttribute("aria-selected", "true");
+        themeDark.setAttribute("aria-selected", "false");
+      }
+      localStorage.setItem("theme", theme);
+    }
+
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark" || savedTheme === "light") {
+      setTheme(savedTheme);
+    } else {
+      setTheme("light");
+    }
+
+    themeLight.addEventListener("click", () => setTheme("light"));
+    themeDark.addEventListener("click", () => setTheme("dark"));
+    const timers = Array.from({ length: 15 }, () => createTimerState());
+
+    function makeCard(index) {
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const top = document.createElement("div");
+      top.className = "top";
+
+      const badge = document.createElement("div");
+      badge.className = "badge";
+      badge.textContent = String(index + 1);
+
+      const status = document.createElement("div");
+      status.className = "status";
+      status.textContent = "未开始";
+
+      const time = document.createElement("div");
+      time.className = "time";
+      time.textContent = "00:00:00";
+
+      top.appendChild(badge);
+
+      const btns = document.createElement("div");
+      btns.className = "btns";
+
+      const btnPause = document.createElement("button");
+      btnPause.className = "btn-pause";
+      btnPause.textContent = "暂停";
+
+      const btnResume = document.createElement("button");
+      btnResume.className = "btn-resume";
+      btnResume.textContent = "开始";
+
+      const btnReset = document.createElement("button");
+      btnReset.className = "btn-reset";
+      btnReset.textContent = "重置";
+
+      btns.appendChild(btnPause);
+      btns.appendChild(btnResume);
+      btns.appendChild(btnReset);
+
+      card.appendChild(top);
+      card.appendChild(status);
+      card.appendChild(time);
+      card.appendChild(btns);
+
+      // 初始按钮状态：未开始 -> 可开始
+      btnPause.disabled = true;
+      btnResume.disabled = false;
+
+      // 绑定事件
+      btnPause.addEventListener("click", () => {
+        const t = timers[index];
+        if (!t.running) return;
+        // 先补齐到当前时刻
+        const now = performance.now();
+        t.elapsedMs += (now - t.lastTick);
+        t.running = false;
+
+        status.textContent = "已暂停";
+        btnResume.textContent = "继续";
+        btnPause.disabled = true;
+        btnResume.disabled = false;
+      });
+
+      btnResume.addEventListener("click", () => {
+        const t = timers[index];
+        if (t.running) return;
+        t.running = true;
+        t.lastTick = performance.now();
+
+        status.textContent = "运行中";
+        btnPause.disabled = false;
+        btnResume.disabled = true;
+      });
+
+      btnReset.addEventListener("click", () => {
+        const t = timers[index];
+        t.elapsedMs = 0;
+        t.running = false;
+        t.lastTick = performance.now();
+
+        time.textContent = "00:00:00";
+        status.textContent = "已重置";
+        btnPause.disabled = true;
+        btnResume.textContent = "开始";
+        btnResume.disabled = false; // 允许从 0 开始
+      });
+
+      return { card, time, status, btnPause, btnResume, btnReset };
+    }
+
+    const ui = timers.map((_, i) => makeCard(i));
+    ui.forEach(x => grid.appendChild(x.card));
+
+    // ===== 统一动画循环：更新所有运行中的计时器 =====
+    function loop() {
+      const now = performance.now();
+      for (let i = 0; i < timers.length; i++) {
+        const t = timers[i];
+        if (!t.running) continue;
+
+        const delta = now - t.lastTick;
+        t.lastTick = now;
+        t.elapsedMs += delta;
+
+        ui[i].time.textContent = format(t.elapsedMs);
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
