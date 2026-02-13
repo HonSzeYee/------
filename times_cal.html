@@ -8,12 +8,12 @@
     :root{
       font-family: system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
       color-scheme: light dark;
-      --bg: #f6f7fb;
+      --bg: #e0f2fe;
       --text: #111;
       --muted: #666;
       --header-bg: #fff;
       --border: #e9e9ef;
-      --card-bg: #fff;
+      --card-bg: #f9f9f5;
       --card-border: #ececf2;
       --shadow: 0 2px 10px rgba(0,0,0,.04);
       --badge-bg: #eef2ff;
@@ -189,6 +189,42 @@
       align-self: center;
       margin-top: 24px;
     }
+    .toast-container{
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 50;
+    }
+    .toast{
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow);
+      border-radius: 12px;
+      padding: 10px 12px;
+      min-width: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .toast-msg{
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .toast-btn{
+      border: 1px solid var(--btn-border);
+      background: var(--btn-bg);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
     button{
       border: 1px solid var(--btn-border);
       background: var(--btn-bg);
@@ -219,7 +255,7 @@
   <header>
     <div class="header-row">
       <h1> Joy Move 拼豆计时器 </h1>
-      <div class="theme-tabs" role="tablist" aria-label="主题切换">
+            <div class="theme-tabs" role="tablist" aria-label="主题切换">
         <button id="themeLight" class="theme-tab" type="button" role="tab" aria-selected="true">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="4" fill="currentColor"/>
@@ -249,9 +285,9 @@
   <div class="wrap">
     <div id="grid" class="grid"></div>
   </div>
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script>
-    // ===== 工具：格式化毫秒 -> HH:MM:SS =====
+    <script>
     function format(ms) {
       const totalSec = Math.floor(ms / 1000);
       const h = Math.floor(totalSec / 3600);
@@ -261,20 +297,22 @@
       return `${pad(h)}:${pad(m)}:${pad(s)}`;
     }
 
-    // ===== 单个计时器状态结构 =====
     function createTimerState() {
       return {
-        elapsedMs: 0,      // 已累积时间
-        running: false,    // 是否在跑
-        lastTick: performance.now()
+        elapsedMs: 0,
+        running: false,
+        lastTick: performance.now(),
+        lastRemindAt: -Infinity,
+        acknowledged: false,
+        toastEl: null
       };
     }
 
-    // ===== 渲染 15 个卡片 =====
     const grid = document.getElementById("grid");
     const themeLight = document.getElementById("themeLight");
     const themeDark = document.getElementById("themeDark");
     const root = document.documentElement;
+    const toastContainer = document.getElementById("toastContainer");
 
     function setTheme(theme) {
       if (theme === "dark") {
@@ -302,7 +340,44 @@
 
     themeLight.addEventListener("click", () => setTheme("light"));
     themeDark.addEventListener("click", () => setTheme("dark"));
+
     const timers = Array.from({ length: 15 }, () => createTimerState());
+    const ONE_HOUR = 60 * 60 * 1000;
+    const REMIND_INTERVAL = 60 * 1000;
+
+    function showOrUpdateToast(index, elapsedMs) {
+      const t = timers[index];
+      const msgText = `${index + 1}号房间，已经 ${format(elapsedMs)}`;
+      if (!t.toastEl) {
+        const toast = document.createElement("div");
+        toast.className = "toast";
+
+        const msg = document.createElement("div");
+        msg.className = "toast-msg";
+        msg.textContent = msgText;
+
+        const btn = document.createElement("button");
+        btn.className = "toast-btn";
+        btn.type = "button";
+        btn.textContent = "已阅读";
+        btn.addEventListener("click", () => {
+          t.acknowledged = true;
+          t.lastRemindAt = -Infinity;
+          if (t.toastEl) {
+            t.toastEl.remove();
+            t.toastEl = null;
+          }
+        });
+
+        toast.appendChild(msg);
+        toast.appendChild(btn);
+        toastContainer.appendChild(toast);
+        t.toastEl = toast;
+      } else {
+        const msg = t.toastEl.querySelector(".toast-msg");
+        if (msg) msg.textContent = msgText;
+      }
+    }
 
     function makeCard(index) {
       const card = document.createElement("div");
@@ -349,15 +424,12 @@
       card.appendChild(time);
       card.appendChild(btns);
 
-      // 初始按钮状态：未开始 -> 可开始
       btnPause.disabled = true;
       btnResume.disabled = false;
 
-      // 绑定事件
       btnPause.addEventListener("click", () => {
         const t = timers[index];
         if (!t.running) return;
-        // 先补齐到当前时刻
         const now = performance.now();
         t.elapsedMs += (now - t.lastTick);
         t.running = false;
@@ -384,12 +456,18 @@
         t.elapsedMs = 0;
         t.running = false;
         t.lastTick = performance.now();
+        t.lastRemindAt = -Infinity;
+        t.acknowledged = false;
+        if (t.toastEl) {
+          t.toastEl.remove();
+          t.toastEl = null;
+        }
 
         time.textContent = "00:00:00";
         status.textContent = "已重置";
         btnPause.disabled = true;
         btnResume.textContent = "开始";
-        btnResume.disabled = false; // 允许从 0 开始
+        btnResume.disabled = false;
       });
 
       return { card, time, status, btnPause, btnResume, btnReset };
@@ -398,7 +476,6 @@
     const ui = timers.map((_, i) => makeCard(i));
     ui.forEach(x => grid.appendChild(x.card));
 
-    // ===== 统一动画循环：更新所有运行中的计时器 =====
     function loop() {
       const now = performance.now();
       for (let i = 0; i < timers.length; i++) {
@@ -411,9 +488,18 @@
 
         ui[i].time.textContent = format(t.elapsedMs);
       }
+      for (let i = 0; i < timers.length; i++) {
+        const t = timers[i];
+        if (t.acknowledged) continue;
+        if (t.elapsedMs < ONE_HOUR) continue;
+        if (now - t.lastRemindAt < REMIND_INTERVAL) continue;
+        t.lastRemindAt = now;
+        showOrUpdateToast(i, t.elapsedMs);
+      }
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
   </script>
 </body>
 </html>
+
