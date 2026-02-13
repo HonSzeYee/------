@@ -192,14 +192,14 @@
     .toast-container{
       position: fixed;
       right: 16px;
-      bottom: 16px;
+      top: 120px;
       display: flex;
       flex-direction: column;
       gap: 10px;
       z-index: 50;
     }
     .toast{
-      background: var(--card-bg);
+      background: #e6a5b8;
       color: var(--text);
       border: 1px solid var(--card-border);
       box-shadow: var(--shadow);
@@ -210,10 +210,12 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
     }
     .toast-msg{
-      font-size: 14px;
+      font-size: 24px;
       line-height: 1.4;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
     }
     .toast-btn{
       border: 1px solid var(--btn-border);
@@ -221,7 +223,8 @@
       color: var(--text);
       padding: 6px 10px;
       border-radius: 999px;
-      font-size: 12px;
+      font-size: 16px;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
       cursor: pointer;
       white-space: nowrap;
     }
@@ -287,7 +290,7 @@
   </div>
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-    <script>
+      <script>
     function format(ms) {
       const totalSec = Math.floor(ms / 1000);
       const h = Math.floor(totalSec / 3600);
@@ -302,8 +305,8 @@
         elapsedMs: 0,
         running: false,
         lastTick: performance.now(),
-        lastRemindAt: -Infinity,
-        acknowledged: false,
+        lastNotifiedHour: 0,
+        acknowledgedUpTo: 0,
         toastEl: null
       };
     }
@@ -343,7 +346,6 @@
 
     const timers = Array.from({ length: 15 }, () => createTimerState());
     const ONE_HOUR = 60 * 60 * 1000;
-    const REMIND_INTERVAL = 60 * 1000;
 
     function showOrUpdateToast(index, elapsedMs) {
       const t = timers[index];
@@ -361,8 +363,7 @@
         btn.type = "button";
         btn.textContent = "已阅读";
         btn.addEventListener("click", () => {
-          t.acknowledged = true;
-          t.lastRemindAt = -Infinity;
+          t.acknowledgedUpTo = t.lastNotifiedHour;
           if (t.toastEl) {
             t.toastEl.remove();
             t.toastEl = null;
@@ -456,8 +457,8 @@
         t.elapsedMs = 0;
         t.running = false;
         t.lastTick = performance.now();
-        t.lastRemindAt = -Infinity;
-        t.acknowledged = false;
+        t.lastNotifiedHour = 0;
+        t.acknowledgedUpTo = 0;
         if (t.toastEl) {
           t.toastEl.remove();
           t.toastEl = null;
@@ -490,10 +491,11 @@
       }
       for (let i = 0; i < timers.length; i++) {
         const t = timers[i];
-        if (t.acknowledged) continue;
-        if (t.elapsedMs < ONE_HOUR) continue;
-        if (now - t.lastRemindAt < REMIND_INTERVAL) continue;
-        t.lastRemindAt = now;
+        const hourCount = Math.floor(t.elapsedMs / ONE_HOUR);
+        if (hourCount <= 0) continue;
+        if (hourCount <= t.acknowledgedUpTo) continue;
+        if (hourCount <= t.lastNotifiedHour) continue;
+        t.lastNotifiedHour = hourCount;
         showOrUpdateToast(i, t.elapsedMs);
       }
       requestAnimationFrame(loop);
@@ -502,4 +504,5 @@
   </script>
 </body>
 </html>
+
 
